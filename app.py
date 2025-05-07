@@ -1,3 +1,5 @@
+print("🚀 Flask with SignalWire forward logic is live")
+
 from flask import Flask, request
 import requests
 
