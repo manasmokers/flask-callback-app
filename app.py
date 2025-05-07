@@ -44,8 +44,7 @@ def callback():
 def webhook():
     try:
         print("🔍 Incoming webhook request content type:", request.content_type, flush=True)
-        raw_data = request.get_data(as_text=True)
-        print("🔍 Raw request data:", raw_data, flush=True)
+        print("📦 Raw request body:", request.get_data(as_text=True), flush=True)
 
         try:
             data = request.get_json(force=True)
