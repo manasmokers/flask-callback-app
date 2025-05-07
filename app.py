@@ -1,53 +1,58 @@
+import os
+import sys
 from flask import Flask, request
 import requests
-import sys
-import os
 
 app = Flask(__name__)
 
-SIGNALWIRE_PROJECT_ID = os.environ.get("SIGNALWIRE_PROJECT_ID", "your-project-id")
-SIGNALWIRE_API_TOKEN = os.environ.get("SIGNALWIRE_API_TOKEN", "your-api-token")
-SIGNALWIRE_SPACE = os.environ.get("SIGNALWIRE_SPACE", "your-space.signalwire.com")
-FORWARD_TO_NUMBER = os.environ.get("FORWARD_TO_NUMBER", "+16109963374")
-FORWARD_FROM_NUMBER = os.environ.get("FORWARD_FROM_NUMBER", "+14085219525")
-SHARED_SECRET = os.environ.get("SHARED_SECRET", "mysharedsecret123")
+SIGNALWIRE_SPACE_URL = os.environ.get('SIGNALWIRE_SPACE_URL')
+SIGNALWIRE_PROJECT_ID = os.environ.get('SIGNALWIRE_PROJECT_ID')
+SIGNALWIRE_API_TOKEN = os.environ.get('SIGNALWIRE_API_TOKEN')
+SIGNALWIRE_FROM_NUMBER = os.environ.get('SIGNALWIRE_FROM_NUMBER')
+FORWARD_TO_NUMBER = os.environ.get('FORWARD_TO_NUMBER')
+SHARED_SECRET = os.environ.get('SHARED_SECRET')
 
-def send_sms(body):
-    url = f"https://{SIGNALWIRE_SPACE}/api/laml/2010-04-01/Accounts/{SIGNALWIRE_PROJECT_ID}/Messages.json"
-    payload = {
-        "From": FORWARD_FROM_NUMBER,
-        "To": FORWARD_TO_NUMBER,
-        "Body": body
-    }
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    print(f"📤 Sending SMS via SignalWire: {payload}", flush=True)
-    response = requests.post(url, data=payload, auth=(SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN), headers=headers)
-    print(f"📬 Response from SignalWire: {response.status_code} {response.text}", flush=True)
-    return '', 204
+def send_sms(message_body):
+    try:
+        payload = {
+            "from": SIGNALWIRE_FROM_NUMBER,
+            "to": FORWARD_TO_NUMBER,
+            "body": f"[SignalWire Free Trial] {message_body}"
+        }
 
-@app.route("/")
-def index():
-    return "✅ Callback server is live"
+        response = requests.post(
+            f"https://{SIGNALWIRE_SPACE_URL}/api/laml/2010-04-01/Accounts/{SIGNALWIRE_PROJECT_ID}/Messages.json",
+            auth=(SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN),
+            data=payload
+        )
 
-@app.route("/callback", methods=["POST"])
+        print("📤 Forwarded via SignalWire:", response.status_code, response.text, flush=True)
+        return '', 204
+    except Exception as e:
+        print("❌ Error sending SMS:", e, file=sys.stderr, flush=True)
+        return '', 500
+
+@app.route('/', methods=['GET'])
+def health_check():
+    return '✅ Flask is running\n', 200
+
+@app.route('/callback', methods=['POST'])
 def callback():
     try:
         data = request.form.to_dict()
-        print(f"📥 Received POST to /callback: {data}", flush=True)
+        print("📥 Received POST to /callback:", data, flush=True)
 
-        if data.get("secret") != SHARED_SECRET:
-            print("🔒 Unauthorized: Invalid secret", flush=True)
-            return "Unauthorized", 403
+        secret = data.get("secret")
+        if secret != SHARED_SECRET:
+            print("⚠️ Invalid secret provided", flush=True)
+            return '', 403
 
         body = data.get("Body", "")
         sender = data.get("From", "Unknown")
-        message = f"[SignalWire Free Trial] Forwarded from /callback: {body} (from {sender})"
-        return send_sms(message)
+        return send_sms(f"Forwarded from /callback: {body} (from {sender})")
     except Exception as e:
         print("❌ Error in /callback:", e, file=sys.stderr, flush=True)
-        return "Error", 500
+        return '', 500
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -89,6 +94,3 @@ def webhook():
         print("❌ Error in /webhook:", e, file=sys.stderr, flush=True)
 
     return '', 204
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
