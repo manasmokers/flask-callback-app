@@ -13,7 +13,7 @@ SIGNALWIRE_SPACE_URL = "nicholas-maxwell.signalwire.com"
 FROM_NUMBER = "+14085219525"
 TO_NUMBER = "+16109963374"
 
-# Shared secret to protect /callback
+# Shared secret to protect the secure /callback endpoint
 SHARED_SECRET = "mysharedsecret123"
 
 @app.route('/')
@@ -55,9 +55,8 @@ def webhook():
     data = request.form.to_dict()
     print("📩 SignalWire 10DLC webhook received:", data, flush=True)
 
-    status = data.get("campaign_status", "No status")
-    campaign_id = data.get("campaign_id", "Unknown")
-    message = f"🚨 Campaign Update: {status} (ID: {campaign_id})"
+    status = data.get('campaign_status', 'unknown')
+    campaign_id = data.get('campaign_id', 'unknown')
 
     try:
         response = requests.post(
@@ -66,12 +65,12 @@ def webhook():
             data={
                 "From": FROM_NUMBER,
                 "To": TO_NUMBER,
-                "Body": message
+                "Body": f"🚨 Campaign Update: {status} (ID: {campaign_id})"
             }
         )
-        print("📤 Webhook alert sent via SMS:", response.status_code, response.text, flush=True)
+        print("📤 Webhook SMS sent:", response.status_code, response.text, flush=True)
     except Exception as e:
-        print("❌ Error sending webhook SMS:", e, file=sys.stderr, flush=True)
+        print("❌ Webhook SMS error:", e, file=sys.stderr, flush=True)
 
     return '', 204
 
