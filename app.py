@@ -12,9 +12,18 @@ SIGNALWIRE_SPACE_URL = "nicholas-maxwell.signalwire.com"
 FROM_NUMBER = "+14085219525"
 TO_NUMBER = "+16109963374"
 
+# Shared secret to protect the endpoint
+SHARED_SECRET = "mysharedsecret123"
+
 @app.route('/callback', methods=['POST'])
 def callback():
     data = request.form.to_dict()
+
+    # 🔐 Shared secret check
+    if data.get('secret') != SHARED_SECRET:
+        print("❌ Unauthorized access attempt:", data)
+        return 'Unauthorized', 403
+
     print("📥 Received POST to /callback:", data)
 
     body = data.get('Body', 'No body provided')
@@ -36,5 +45,6 @@ def callback():
 
     return '', 204
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+@app.route('/')
+def index():
+    return 'Flask app is running.'
