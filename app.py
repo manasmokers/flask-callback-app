@@ -18,13 +18,13 @@ SHARED_SECRET = "mysharedsecret123"
 
 @app.route('/')
 def index():
-    print("✅ Root / route was hit", flush=True)
-    return 'Flask app is running.', 200
+    return 'Flask app is running.'
 
 @app.route('/callback', methods=['POST'])
 def callback():
     data = request.form.to_dict()
 
+    # 🔐 Shared secret check
     if data.get('secret') != SHARED_SECRET:
         print("❌ Unauthorized access attempt:", data, file=sys.stderr, flush=True)
         return 'Unauthorized', 403
@@ -55,24 +55,25 @@ def webhook():
     data = request.form.to_dict()
     print("📩 SignalWire 10DLC webhook received:", data, flush=True)
 
-    status = data.get("campaign_status")
-    campaign_id = data.get("campaign_id")
+    # Optional SMS notification
+    try:
+        status = data.get('campaign_status')
+        campaign_id = data.get('campaign_id')
 
-    if status and campaign_id:
-        message = f"📣 10DLC Update: Campaign {campaign_id} is now {status}"
-        try:
+        if status and campaign_id:
+            sms_body = f"10DLC Update: Campaign {campaign_id} is now '{status}'"
             response = requests.post(
                 f"https://{SIGNALWIRE_SPACE_URL}/api/laml/2010-04-01/Accounts/{SIGNALWIRE_PROJECT_ID}/Messages.json",
                 auth=(SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN),
                 data={
                     "From": FROM_NUMBER,
                     "To": TO_NUMBER,
-                    "Body": message
+                    "Body": sms_body
                 }
             )
-            print("📤 SMS Sent:", response.status_code, response.text, flush=True)
-        except Exception as e:
-            print("❌ SMS send failed:", e, file=sys.stderr, flush=True)
+            print("📤 Webhook SMS sent:", response.status_code, response.text, flush=True)
+    except Exception as e:
+        print("❌ Webhook SMS error:", e, file=sys.stderr, flush=True)
 
     return '', 204
 
