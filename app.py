@@ -2,6 +2,7 @@ print("🚀 Flask with SignalWire forward logic is live")
 
 from flask import Flask, request
 import requests
+import sys
 
 app = Flask(__name__)
 
@@ -12,8 +13,12 @@ SIGNALWIRE_SPACE_URL = "nicholas-maxwell.signalwire.com"
 FROM_NUMBER = "+14085219525"
 TO_NUMBER = "+16109963374"
 
-# Shared secret to protect the endpoint
+# Shared secret to protect the secure endpoint
 SHARED_SECRET = "mysharedsecret123"
+
+@app.route('/')
+def index():
+    return 'Flask app is running.'
 
 @app.route('/callback', methods=['POST'])
 def callback():
@@ -21,10 +26,10 @@ def callback():
 
     # 🔐 Shared secret check
     if data.get('secret') != SHARED_SECRET:
-        print("❌ Unauthorized access attempt:", data)
+        print("❌ Unauthorized access attempt:", data, file=sys.stderr, flush=True)
         return 'Unauthorized', 403
 
-    print("📥 Received POST to /callback:", data)
+    print("📥 Received POST to /callback:", data, flush=True)
 
     body = data.get('Body', 'No body provided')
     sender = data.get('From', 'Unknown')
@@ -39,18 +44,20 @@ def callback():
                 "Body": f"Forwarded from /callback: {body} (from {sender})"
             }
         )
-        print("📤 Forwarded via SignalWire:", response.status_code, response.text)
+        print("📤 Forwarded via SignalWire:", response.status_code, response.text, flush=True)
     except Exception as e:
-        print("❌ Error forwarding:", e)
+        print("❌ Error forwarding:", e, file=sys.stderr, flush=True)
 
     return '', 204
 
-@app.route('/')
-def index():
-    return 'Flask app is running.'
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.form.to_dict()
+    print("📩 SignalWire 10DLC webhook received:", data, flush=True)
+
+    # Optional: You could forward this, log it, or SMS yourself here
+
+    return '', 204
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-
-
-#Secure /callback with shared secret
