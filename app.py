@@ -13,10 +13,42 @@ SIGNALWIRE_SPACE_URL = "nicholas-maxwell.signalwire.com"
 FROM_NUMBER = "+14085219525"
 TO_NUMBER = "+16109963374"
 
+# Shared secret to protect the secure endpoint
+SHARED_SECRET = "mysharedsecret123"
+
 @app.route('/')
 def index():
     print("✅ Root / route was hit", flush=True)
     return 'Flask app is running.', 200
+
+@app.route('/callback', methods=['POST'])
+def callback():
+    data = request.form.to_dict()
+
+    if data.get('secret') != SHARED_SECRET:
+        print("❌ Unauthorized access attempt:", data, file=sys.stderr, flush=True)
+        return 'Unauthorized', 403
+
+    print("📥 Received POST to /callback:", data, flush=True)
+
+    body = data.get('Body', 'No body provided')
+    sender = data.get('From', 'Unknown')
+
+    try:
+        response = requests.post(
+            f"https://{SIGNALWIRE_SPACE_URL}/api/laml/2010-04-01/Accounts/{SIGNALWIRE_PROJECT_ID}/Messages.json",
+            auth=(SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN),
+            data={
+                "From": FROM_NUMBER,
+                "To": TO_NUMBER,
+                "Body": f"Forwarded from /callback: {body} (from {sender})"
+            }
+        )
+        print("📤 Forwarded via SignalWire:", response.status_code, response.text, flush=True)
+    except Exception as e:
+        print("❌ Error forwarding:", e, file=sys.stderr, flush=True)
+
+    return '', 204
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
