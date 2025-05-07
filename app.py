@@ -48,3 +48,5 @@ def callback():
 @app.route('/')
 def index():
     return 'Flask app is running.'
+
+Secure /callback with shared secret
