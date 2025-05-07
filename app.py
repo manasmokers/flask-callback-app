@@ -55,7 +55,23 @@ def webhook():
     data = request.form.to_dict()
     print("📩 SignalWire 10DLC webhook received:", data, flush=True)
 
-    # Optional: You could forward this, log it, or SMS yourself here
+    status = data.get('campaign_status', 'UNKNOWN')
+    campaign_id = data.get('campaign_id', 'UNKNOWN')
+
+    try:
+        message = f"📣 10DLC Update: Campaign {campaign_id} is now {status}"
+        response = requests.post(
+            f"https://{SIGNALWIRE_SPACE_URL}/api/laml/2010-04-01/Accounts/{SIGNALWIRE_PROJECT_ID}/Messages.json",
+            auth=(SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN),
+            data={
+                "From": FROM_NUMBER,
+                "To": TO_NUMBER,
+                "Body": message
+            }
+        )
+        print("📤 Webhook SMS sent:", response.status_code, response.text, flush=True)
+    except Exception as e:
+        print("❌ Error sending webhook SMS:", e, file=sys.stderr, flush=True)
 
     return '', 204
 
