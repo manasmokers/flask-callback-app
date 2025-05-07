@@ -27,3 +27,7 @@ def callback():
     )
     print("SMS sent:", response.status_code, response.text)
     return '', 204
+
+# 🔻 ADD THIS AT THE BOTTOM
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
