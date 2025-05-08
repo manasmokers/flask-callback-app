@@ -30,9 +30,10 @@ def index():
 @app.route('/callback', methods=['POST'])
 def callback():
     try:
-        data = request.form.to_dict()
+        data = request.form.to_dict()  # For SMS forwarding, it's expected to be form data
         print("📥 Received POST to /callback:", data, flush=True)
 
+        # Format the message for forwarding
         message = f"[SignalWire Free Trial] Forwarded from /callback: {data.get('Body', '')} (from {data.get('From', '')})"
         return send_sms(message)
 
@@ -43,41 +44,35 @@ def callback():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
-        content_type = request.headers.get('Content-Type')
-        raw_body = request.get_data(as_text=True)
-        print("🔍 Content-Type:", content_type, flush=True)
-        print("📦 Raw body:", raw_body, flush=True)
+        print("🔍 Incoming webhook request content type:", request.content_type, flush=True)
+        raw_data = request.get_data(as_text=True)
+        print("🔍 Raw request data:", raw_data, flush=True)
 
-        data = None
-        if content_type == 'application/json':
-            try:
-                data = request.get_json(force=True)
-                print("📊 Parsed JSON:", data, flush=True)
-            except Exception as e:
-                print("❌ JSON parsing failed:", e, flush=True)
-        else:
-            data = request.form.to_dict()
+        try:
+            # For 10DLC updates and other webhook events, force JSON parsing
+            data = request.get_json(force=True)
+            print("📊 Parsed JSON data:", data, flush=True)
+        except Exception as json_err:
+            print("⚠️ Failed to parse JSON, falling back to form data:", json_err, flush=True)
+            data = request.form.to_dict()  # Fall back to form data
             print("📊 Parsed form data:", data, flush=True)
-
-        if not data:
-            print("⚠️ No data parsed from request.", flush=True)
-            return '', 400
 
         print("📩 SignalWire 10DLC webhook received:", data, flush=True)
 
+        # Extract relevant fields from the webhook payload
         campaign_status = data.get('campaign_status')
         campaign_id = data.get('campaign_id', 'Unknown')
 
-        print(f"🏷️ campaign_status: '{campaign_status}', campaign_id: '{campaign_id}'", flush=True)
+        print(f"🏷️ Extracted campaign_status: '{campaign_status}', campaign_id: '{campaign_id}'", flush=True)
 
         if campaign_status == 'approved':
-            print("✅ Campaign approved — sending SMS", flush=True)
+            print("✅ Campaign status is 'approved', sending SMS", flush=True)
             return send_sms(f"✅ 10DLC campaign approved: {campaign_id}")
         else:
-            print("⏭️ Campaign not approved — skipping SMS", flush=True)
+            print(f"❓ Campaign status is not 'approved' (actual value: '{campaign_status}'), SMS not sent", flush=True)
 
     except Exception as e:
-        print("❌ Error handling webhook:", e, file=sys.stderr, flush=True)
+        print("❌ Error in /webhook:", e, file=sys.stderr, flush=True)
 
     return '', 204
 
